@@ -1,6 +1,6 @@
 process BLOBTOOLKIT {
     tag "$meta.wgs_set"
-    label 'process_low'
+    label 'process_single'
     
     // conda "bioconda::blobtools=1.1.1"
     if (workflow.profile.tokenize(',').intersect(['conda', 'mamba']).size() >= 1) {
