@@ -16,13 +16,13 @@ nextflow.enable.dsl=2
 assert params.accession, "Parameter 'accession' is not specified"
 
 // Run the workflow
-include { GENOMENOTE } from './workflows/pathogen_genome_note'
-workflow PATHOGEN_GENOMENOTE {
+include { GENOMENOTE } from './workflows/ena_genome_note'
+workflow ENA_GENOMENOTE {
     main:
         GENOMENOTE(params.accession, params.outdir)
 }
 
 workflow {
     main:
-        PATHOGEN_GENOMENOTE()
+        ENA_GENOMENOTE()
 }
