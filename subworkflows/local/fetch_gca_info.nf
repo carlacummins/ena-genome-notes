@@ -1,12 +1,12 @@
 include { ENA_SEARCH_ASSEMBLY } from '../../modules/local/ena/search_assembly'
-include { BLOBTOOLKIT         } from '../../modules/local/blobtoolkit.nf'
+include { GCA_ASSEMBLY_STATS  } from '../../modules/local/ena/gca_assembly_stats'
+include { FETCH_SAMPLE_INFO   } from '../../modules/local/ena/fetch_sample_info'
 
 nextflow.enable.dsl=2
 
 workflow FETCH_GCA_INFO {
     take:
         accession
-    // accession = params.accession
 
     main:
         ENA_SEARCH_ASSEMBLY(accession)
@@ -19,20 +19,20 @@ workflow FETCH_GCA_INFO {
 
         assembly_info | view
 
-        BLOBTOOLKIT(assembly_info)
-        | set { btk }
-        
-        btk.png   | view
-        btk.busco | view
+        GCA_ASSEMBLY_STATS(assembly_info)
+        | set { stats_json }
+        stats_json | view
+
+        FETCH_SAMPLE_INFO(assembly_info)
+        | set { sample_info }
+        sample_info | view
 
     emit:
-        btk_images = btk.png
-        busco_json = btk.busco
-        meta       = assembly_info
+        meta = assembly_info
+        stats_json
+        sample_info
 }
 
 workflow {
-    // def meta = [:]
-    // meta.id = params.accession
     FETCH_GCA_INFO(params.accession)
 }
