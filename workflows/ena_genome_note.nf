@@ -3,6 +3,8 @@
 // include { RUN_QCS           } from '../subworkflows/local/run_qcs'
 
 include { FETCH_GCA_INFO } from '../subworkflows/local/fetch_gca_info'
+include { DOWNLOAD_DATA  } from '../subworkflows/local/download_data'
+
 
 // Check optional parameters
 // if (params.lineage_db) { ch_busco = Channel.fromPath(params.lineage_db) } else { ch_busco = Channel.empty() }
@@ -23,6 +25,11 @@ workflow GENOMENOTE {
         
         FETCH_GCA_INFO(accession) 
         | set { gca_info }
+        meta = gca_info.meta
+
+        DOWNLOAD_DATA(meta)
+        | set { downloads }
+
 
 }
 
