@@ -1,4 +1,5 @@
 process ENA_SEARCH_ASSEMBLY {
+    tag "$accession"
     label 'process_tiny'
     
     conda "bioconda::curl"

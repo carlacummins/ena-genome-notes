@@ -1,6 +1,7 @@
 process BLOBTOOLKIT {
     tag "$meta.wgs_set"
     label 'process_single'
+    // debug true
     
     // conda "bioconda::blobtools=1.1.1"
     if (workflow.profile.tokenize(',').intersect(['conda', 'mamba']).size() >= 1) {

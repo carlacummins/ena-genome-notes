@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 import subprocess
 
-parser = argparse.ArgumentParser(description="Generate map from ENA Advanced Search output (TSV format)")
+parser = argparse.ArgumentParser(description="Query ENA XREFs for BlobToolKit images and pull them")
 parser.add_argument('--acc', help="accession (wgs_set)")
 parser.add_argument('--outdir', help="output directory (default: .)", default='.')
 opts = parser.parse_args(sys.argv[1:])
