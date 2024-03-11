@@ -13,6 +13,7 @@ workflow FETCH_GCA_INFO {
         | splitCsv(header: true, sep:"\t")
         | map { row ->
             meta = row.subMap('accession','sample_accession','wgs_set','version')
+            meta['id'] = meta.accession
             meta
         }
         | set { assembly_info }
