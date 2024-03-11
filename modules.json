@@ -1,5 +1,5 @@
 {
-    "name": "pathogen-genome-notes",
+    "name": "ena-genome-notes",
     "homePage": "",
     "repos": {
         "https://github.com/nf-core/modules.git": {
