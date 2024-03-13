@@ -11,11 +11,13 @@ process DOWNLOAD_FASTA {
         val meta
 
     output:
-        tuple val(meta), path(fasta)
+        tuple val(meta), path(final_fasta)
 
     script:
-        fasta = "${meta.accession}.fa"
+        inter_fasta = "${meta.accession}.raw.fa"
+        final_fasta = "${meta.accession}.fa"
         """
-        curl https://www.ebi.ac.uk/ena/browser/api/fasta/${meta.accession} > ${fasta}
+        curl https://www.ebi.ac.uk/ena/browser/api/fasta/${meta.accession} > ${inter_fasta}
+        check_fasta.py --fa ${inter_fasta} --out ${final_fasta}
         """
 }
