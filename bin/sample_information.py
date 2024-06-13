@@ -5,8 +5,7 @@ import sys, argparse
 import requests
 import xmltodict
 import json
-
-import pprint
+import re
 
 parser = argparse.ArgumentParser(description="Fetch and parse assembly stats for a given accession")
 parser.add_argument('--acc', help="assembly accession")
@@ -24,7 +23,7 @@ def query_endpoint(url):
         print(f"Failed to fetch data from {url}")
         print(f"Status code: {response.status_code}")
         sys.exit(1)
-        
+
 def fetch_ena_xml(acc):
     # xml_url_root = 'https://www.ebi.ac.uk/ena/browser/api/sra'
     xml_url_root = 'https://www.ebi.ac.uk/ena/browser/api/xml'
@@ -34,12 +33,25 @@ def fetch_ena_xml(acc):
     return root
 
 def taxonomic_lineage(taxon_id):
-    tax_url = f"https://www.ebi.ac.uk/ena/taxonomy/rest/tax-id/{taxon_id}?binomialOnly=false"
-    taxon_json = json.loads(query_endpoint(tax_url).decode())
-    return taxon_json['lineage']
+    tax_url_base = "https://www.ebi.ac.uk/ena/taxonomy/rest"
+    tax_id_url = f"{tax_url_base}/tax-id/{taxon_id}"
+    taxon_json = json.loads(query_endpoint(tax_id_url).decode())
+
+    lineage = []
+    for sci_name in taxon_json['lineage'].split('; '):
+        if not sci_name:
+            continue
+        sci_name_url = f"{tax_url_base}/scientific-name/{sci_name}"
+        print(sci_name_url)
+        this_tax_json = json.loads(query_endpoint(sci_name_url).decode())
+        print(this_tax_json)
+        lineage.append({'name':sci_name, 'rank':this_tax_json[0]['rank']})
+
+    return lineage
 
 # URL of the XML data
 sample_xml = fetch_ena_xml(opts.acc)['SAMPLE_SET']['SAMPLE']
+print(sample_xml)
 
 # parse XML and pull out information of interest
 sample_info = {}
@@ -53,8 +65,10 @@ sample_info['taxon-lineage'] = taxonomic_lineage(sample_info['taxon-id'])
 
 # first created
 for attr in sample_xml['SAMPLE_ATTRIBUTES']['SAMPLE_ATTRIBUTE']:
-    if attr['TAG'] in ['strain', 'ENA-FIRST-PUBLIC']:
-        sample_info[attr['TAG']] = attr['VALUE'] 
+    # if attr['TAG'] in ['strain', 'ENA-FIRST-PUBLIC']:
+    tag = attr['TAG'].lower()
+    tag = re.sub('[\s_]+', '-', tag)
+    sample_info[tag] = attr['VALUE']
 
 # ena fastqs
 for link in sample_xml['SAMPLE_LINKS']['SAMPLE_LINK']:

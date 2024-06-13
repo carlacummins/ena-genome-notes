@@ -35,6 +35,7 @@ for stat in gca_xml['ASSEMBLY_ATTRIBUTES']['ASSEMBLY_ATTRIBUTE']:
 
 chr_list = gca_xml.get('CHROMOSOMES').get('CHROMOSOME', []) if gca_xml.get('CHROMOSOMES') else []
 assembly_stats['chromosome-count'] = len(chr_list)
+assembly_stats['chromosomes'] = [[x['NAME'], x['TYPE'], x['@accession']] for x in chr_list]
 
 assembly_stats['assembly-level'] = gca_xml.get('ASSEMBLY_LEVEL')
 assembly_stats['genome-representation'] = gca_xml.get('GENOME_REPRESENTATION')

@@ -21,15 +21,15 @@ for seq_record in SeqIO.parse(opts.fa, "fasta"):
                              f"{seq_r_len}, {seen[seq_r_id]['len']}",
                              "\n")
             sys.exit(1)
-        dup += 1
-        total += 1
+        dup_seqs += 1
+        total_seqs += 1
     except KeyError:
         seen[seq_r_id] = {'seq': seq_record.seq, 'len':seq_r_len, 'desc': seq_record.description}
         order.append(seq_r_id)
-        total += 1
+        total_seqs += 1
 
 with open(opts.out, 'w') as outfile:
     for k in order:
         outfile.write(f">{seen[k]['desc']}\n{seen[k]['seq']}\n")
 
-print(f"Removed {dup} duplicate sequences from a total of {total}")
+print(f"Removed {dup_seqs} duplicate sequences from a total of {total_seqs}")
