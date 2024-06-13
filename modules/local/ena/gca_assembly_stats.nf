@@ -1,13 +1,10 @@
 process GCA_ASSEMBLY_STATS {
     tag "${meta.accession}"
     label 'process_low'
-    debug true
-    
-    conda "conda-forge::python=3.10.2"
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/python:3.10.2':
-        'biocontainers/python:3.10.2' }"
-    
+
+    conda "../../../env.yaml"
+    container "carlacummins/ena-genome-notes:latest"
+
     input:
         val meta
 
