@@ -2,8 +2,9 @@
 
 import sys, argparse
 from Bio import SeqIO
+import re
 
-parser = argparse.ArgumentParser(description="Check fasta file for duplicates")
+parser = argparse.ArgumentParser(description="Check fasta file for duplicates and problematic characters")
 parser.add_argument('--fa', help="input fasta")
 parser.add_argument('--out', help="output fasta")
 opts = parser.parse_args(sys.argv[1:])
@@ -12,7 +13,7 @@ seen = {}
 order = []
 total_seqs, dup_seqs = 0, 0
 for seq_record in SeqIO.parse(opts.fa, "fasta"):
-    seq_r_id = seq_record.id
+    seq_r_id = re.sub('[|]+', ';', seq_record.id)
     seq_r_len = len(seq_record)
 
     try:
