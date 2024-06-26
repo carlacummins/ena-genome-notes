@@ -2,3 +2,4 @@ xmltodict==0.13.0
 requests==2.31.0
 biopython==1.83
 prettytable==3.10.0
+python-dateutil==2.8.2
