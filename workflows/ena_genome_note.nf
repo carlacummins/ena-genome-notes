@@ -1,10 +1,7 @@
-// include { FETCH_GENOME_INFO } from '../subworkflows/local/fetch_genome_info'
-// include { GENOMESUMMARY     } from '../subworkflows/local/genome_summary'
-// include { RUN_QCS           } from '../subworkflows/local/run_qcs'
-
 include { FETCH_GCA_INFO } from '../subworkflows/local/fetch_gca_info'
 include { DOWNLOAD_DATA  } from '../subworkflows/local/download_data'
 include { RUN_QCS        } from '../subworkflows/local/run_qcs'
+include { GENOMESUMMARY  } from '../subworkflows/local/genome_summary'
 
 // Check optional parameters
 // if (params.lineage_db) { ch_busco = Channel.fromPath(params.lineage_db) } else { ch_busco = Channel.empty() }
@@ -15,14 +12,6 @@ workflow GENOMENOTE {
         outdir
 
     main:
-        // def meta = [:]
-        // meta.id = accession
-        // FETCH_GENOME_INFO(meta, accession, outdir)
-        // | set { genome_info }
-        //
-        // GENOMESUMMARY(genome_info.summary_ch)
-        // RUN_QCS(genome_info.genome_ch, ch_busco)
-
         FETCH_GCA_INFO(accession)
         | set { gca_info }
         meta = gca_info.meta
@@ -32,6 +21,11 @@ workflow GENOMENOTE {
         genome_ch = downloads.fasta
 
         RUN_QCS(genome_ch)
+        | set { qc_ch }
+        qc_ch.busco_dir | view { "GENOMENOTE::qc_ch.busco_dir = $it" }
+
+        GENOMESUMMARY(accession, gca_info.sample_json, gca_info.assembly_json, qc_ch.busco_dir)
+        | set { genomenote_ch }
 }
 
 // workflow {

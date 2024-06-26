@@ -1,148 +1,146 @@
 #!/usr/bin/env python
 
-import sys
+import sys, argparse
 import json
 from dateutil import parser
-import requests
-from retrying import retry
+from prettytable import PrettyTable, MARKDOWN
+
+argparser = argparse.ArgumentParser(description="Combine multiple sources into single genome note summary report")
+argparser.add_argument('--sample-json'  , help="JSON file containing sample information")
+argparser.add_argument('--assembly-json', help="JSON file containing assembly stats")
+argparser.add_argument('--busco'        , help="path to BUSCO plot")
+argparser.add_argument('--out'          , help="output file (markdown format)")
+opts = argparser.parse_args(sys.argv[1:])
 
 def die_with_message(message):
     sys.stderr.write(f"{message}\n")
     sys.exit(1)
 
-
-@retry(
-    stop_max_attempt_number=3,  # Number of maximum retry attempts
-    wait_fixed=1000  # Time (in milliseconds) between retry attempts
-)
-def query_tax_server(tax_id):
-    server = "https://api.ncbi.nlm.nih.gov"
-    ext = f"/datasets/v2alpha/taxonomy/taxon/{tax_id}"
-     
-    r = requests.get(f"{server}/{ext}", headers={ "Content-Type" : "application/json"})
-     
-    if not r.ok:
-        r.raise_for_status()
-        sys.exit()
-     
-    tax_json = r.json()
-    return tax_json
-
-
-def get_taxonomic_lineage(tax_id):
-    tax_json = query_tax_server(tax_id)
-
-    taxon_info = tax_json["taxonomy_nodes"][0]["taxonomy"]
-    try:
-        org_name = taxon_info["organism_name"]
-        lineage = taxon_info["lineage"]
-        rank = taxon_info["rank"]
-    except KeyError:
-        print(taxon_info)
-        sys.exit(1)
-
-    lineage_list = []
-    for desc_tax_id in lineage:
-        desc_tax_json = query_tax_server(desc_tax_id)
-        desc_tax_info = desc_tax_json["taxonomy_nodes"][0]["taxonomy"]
-        desc_org_name = desc_tax_info["organism_name"]
-
-        try:
-            desc_rank = desc_tax_info["rank"]
-        except KeyError:
-            continue
-
-        lineage_list.append([desc_org_name, desc_rank])
-    lineage_list.append([org_name, rank])
-    return lineage_list
-
 def full_lineage_string(lineage):
-    return "; ".join(x[0] for x in lineage)
+    return "; ".join(x['name'] for x in lineage)
 
 def short_lineage_string(lineage):
-    return "; ".join(x[0] for x in lineage if x[1] in ['KINGDOM', 'PHYLUM', 'CLASS', 'ORDER', 'FAMILY'])
+    return "; ".join(x['name'] for x in lineage if x['rank'] in ['kingdom', 'phylum', 'class', 'order', 'family'])
 
+def create_chromosome_table(chr_list):
+    # some 'chromosome' lists have names and some don't
+    # also, format numbers for readability
+    if chr_list[0][0]:
+        heading = ['Name', 'Type', 'Accession', 'Length']
+        rows = [[c[0], c[1], c[2], f"{int(c[3]):,}"] for c in chr_list]
+    else:
+        heading = ['Type', 'Accession', 'Length']
+        rows = [[c[1], c[2], f"{int(c[3]):,}"] for c in chr_list]
 
+    table = PrettyTable(heading)
+    table.add_rows(rows)
+    table.set_style(MARKDOWN)
+    return table.get_string()
 
-with open(sys.argv[1], 'r') as json_file:
-    json_data = json.load(json_file)
+def author_list(sample_info):
+    a_list = [x for x in [
+        sample_info.get('collected-by'),
+        sample_info.get('identified-by'),
+        sample_info.get('center-name')
+    ] if x is not None]
 
+    if a_list:
+        return '; '.join(a_list)
+    else:
+        return ''
+
+"""
+    Load input JSONs
+"""
+with open(opts.sample_json, 'r') as s_json_file:
+    sample_data = json.load(s_json_file)
+with open(opts.assembly_json, 'r') as a_json_file:
+    assembly_info = json.load(a_json_file)
+
+# create template and part-populate
 report_breakdown = {
     "title"     : "",
+    "authors"   : author_list(sample_data),
     "abstract"  : "",
     "taxonomy"  : "",
     "background": "TBD",
     "seq_report": ""
 }
 
-# Fetch basic organism information, incl taxonomic lineage
+"""
+    Fetch basic organism information, incl taxonomic lineage
+"""
 try:
-    organism_name = json_data["organism"]["organismName"]
-    tax_id        = json_data["organism"]["taxId"]
-    tax_lineage   = get_taxonomic_lineage(tax_id)
+    organism_name = sample_data['scientific-name']
+    tax_id        = sample_data['taxon-id']
+    tax_lineage   = sample_data['taxon-lineage']
     short_lineage = short_lineage_string(tax_lineage)
     report_breakdown['taxonomy'] = full_lineage_string(tax_lineage)
     report_breakdown['title'] = f"# The genome sequence of {organism_name}"
     report_breakdown['abstract'] += f"We present a genome assembly for {organism_name} ({short_lineage})"
-except KeyError:
-    die_with_message("Cannot find organism information. Fatal.")
+except KeyError as ke:
+    die_with_message(f"Missing essential organism information ({ke}). Fatal.")
 
 
-# Fetch collection/isolation details
-try:
-    biosample = json_data["assemblyInfo"]["biosample"]
-    for attr in biosample["attributes"]:
-        if attr["name"] == "collection_date":
-            collection_date = attr["value"]
-        elif attr["name"] == "isolation_source":
-            isolation_source = attr["value"]
-        elif attr["name"] == "geo_loc_name":
-            geo_location = attr["value"]
-    
-    if collection_date or isolation_source or geo_location:
-        report_breakdown['abstract'] += ", first isolated"
-        if isolation_source:
-            report_breakdown['abstract'] += f" from {isolation_source}"
-        if geo_location:
-            report_breakdown['abstract'] += f" in {geo_location}"
-        if collection_date:
-            parsed_date = parser.parse(collection_date)
-            date_text = parsed_date.strftime("%B %Y")
-            report_breakdown['abstract'] += f" in {date_text}"
-    report_breakdown['abstract'] += ". "
-except KeyError:
-    # just end sentence if no further info is available
-    report_breakdown['abstract'] += ". "
+"""
+    Fetch collection/isolation details
+"""
+collection_date = sample_data.get('collection-date')
+isolation_source = sample_data.get('isolation-source')
+geo_location = sample_data.get('country') or sample_data.get('geo-loc-name')
+# TODO : handle all versions of geographic location
+
+if collection_date or isolation_source or geo_location:
+    report_breakdown['abstract'] += ", first isolated"
+    if isolation_source:
+        report_breakdown['abstract'] += f" from {isolation_source}"
+    if geo_location:
+        report_breakdown['abstract'] += f" in {geo_location}"
+    if collection_date:
+        parsed_date = parser.parse(collection_date)
+        date_text = parsed_date.strftime("%B %Y")
+        report_breakdown['abstract'] += f" in {date_text}"
+report_breakdown['abstract'] += ". "
+
+"""
+    Fetch assembly statistics
+"""
+seq_len = assembly_info.get("total-length")
+seq_len_mbp = float(seq_len)/1000000
+
+count_breakdown = []
+for level in ('chromosome', 'scaffold', 'contig'):
+    level_count = assembly_info.get(f'{level}-count')
+    if level_count:
+        count_breakdown.append(f"{level_count} {level}(s)")
+count_breakdown_str = ', '.join(count_breakdown)
+
+report_breakdown['abstract'] += f"The genome sequence is {seq_len_mbp:.1f} megabases in span"
+if assembly_info.get('assembly-level'):
+    report_breakdown['abstract'] += f", assembled to the {assembly_info.get('assembly-level')} level"
+if assembly_info.get('genome-representation'):
+    report_breakdown['abstract'] += f", representing a {assembly_info.get('genome-representation')} genome"
+
+report_breakdown['abstract'] += f". It is arranged into {count_breakdown_str}. "
+
+"""
+    Genome Sequence Report
+"""
+if assembly_info.get('chromosomes'):
+    report_breakdown['seq_report'] += f"#### Chromosomes\n\n{create_chromosome_table(assembly_info.get('chromosomes'))}\n"
+report_breakdown['seq_report'] += f"\n#### BUSCO Summary\n\n![BUSCO plot]({opts.busco})"
 
 
-# Fetch assembly statistics
-try:
-    assembly_stats = json_data["assemblyStats"]
-    seq_len = assembly_stats["totalSequenceLength"]
-    seq_len_mbp = float(seq_len)/1000000
-    contigs = assembly_stats["numberOfContigs"]
-    report_breakdown['abstract'] += f"The genome sequence is {seq_len_mbp:.1f} megabases in span, arranged into {contigs} contigs. "
-except KeyError:
-    assembly_stats = {}
-
-try:
-    assembly_info = json_data["assemblyInfo"]
-    # print("\n\n------- Assembly Info --------")
-    # pp_json = json.dumps(assembly_info, indent=4)
-    # print(pp_json)
-except KeyError:
-    assembly_info = {}
-
-
-try:
-    annotation_info = json_data["annotationInfo"]
-except KeyError:
-    annotation_info = {}
-
-
+"""
+    Collate information into markdown formatted output
+"""
 report_markdown  = f"{report_breakdown['title']}\n\n"
-report_markdown += f"## Abstract\n\n{report_breakdown['abstract']}\n\n"
-report_markdown += f"## Species taxonomy\n\n{report_breakdown['taxonomy']}\n\n"
+report_markdown += f"### Authors\n\n{report_breakdown['authors']}\n\n"
+report_markdown += f"### Abstract\n\n{report_breakdown['abstract']}\n\n"
+report_markdown += f"### Species taxonomy\n\n{report_breakdown['taxonomy']}\n\n"
+report_markdown += f"----------------------\n----------------------\n\n"
 report_markdown += f"## Background\n\n{report_breakdown['background']}\n\n"
 report_markdown += f"## Genome Sequence Report\n\n{report_breakdown['seq_report']}\n\n"
-print(report_markdown)
+
+with open(opts.out, 'w') as md:
+    md.write(report_markdown)

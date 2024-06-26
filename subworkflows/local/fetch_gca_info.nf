@@ -21,17 +21,17 @@ workflow FETCH_GCA_INFO {
         assembly_info | view
 
         GCA_ASSEMBLY_STATS(assembly_info)
-        | set { stats_json }
-        stats_json | view
+        | set { assembly_json }
+        assembly_json | view
 
         FETCH_SAMPLE_INFO(assembly_info)
-        | set { sample_info }
-        sample_info | view
+        | set { sample_json }
+        sample_json | view
 
     emit:
         meta = assembly_info
-        stats_json
-        sample_info
+        assembly_json
+        sample_json
 }
 
 workflow {
