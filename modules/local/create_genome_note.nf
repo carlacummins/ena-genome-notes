@@ -8,8 +8,6 @@ process CREATE_GENOME_NOTE {
 
     input:
         val accession
-        // path sample_json
-        // path assembly_json
         tuple val(s_meta), path(sample_json)
         tuple val(a_meta), path(assembly_json)
         path busco_plot

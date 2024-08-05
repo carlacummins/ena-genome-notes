@@ -115,7 +115,7 @@ for level in ('chromosome', 'scaffold', 'contig'):
         count_breakdown.append(f"{level_count} {level}(s)")
 count_breakdown_str = ', '.join(count_breakdown)
 
-report_breakdown['abstract'] += f"The genome sequence is {seq_len_mbp:.1f} megabases in span"
+report_breakdown['abstract'] += f"The genome sequence is {seq_len_mbp:.2f} megabases in span"
 if assembly_info.get('assembly-level'):
     report_breakdown['abstract'] += f", assembled to the {assembly_info.get('assembly-level')} level"
 if assembly_info.get('genome-representation'):

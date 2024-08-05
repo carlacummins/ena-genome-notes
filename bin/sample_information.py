@@ -6,44 +6,25 @@ import requests
 import xmltodict
 import json
 import re
+from ena_utils import *
 
 parser = argparse.ArgumentParser(description="Fetch and parse assembly stats for a given accession")
 parser.add_argument('--acc', help="assembly accession")
 parser.add_argument('--out', help="output file (json format)")
 opts = parser.parse_args(sys.argv[1:])
 
-def query_endpoint(url):
-    # Send an HTTP GET request to the URL
-    response = requests.get(url)
-
-    # Check if the request was successful (status code 200)
-    if response.status_code == 200:
-        return response.content
-    else:
-        print(f"Failed to fetch data from {url}")
-        print(f"Status code: {response.status_code}")
-        sys.exit(1)
-
-def fetch_ena_xml(acc):
-    # xml_url_root = 'https://www.ebi.ac.uk/ena/browser/api/sra'
-    xml_url_root = 'https://www.ebi.ac.uk/ena/browser/api/xml'
-    xml_url = f"{xml_url_root}/{acc}"
-    root = xmltodict.parse(query_endpoint(xml_url))
-
-    return root
+# moved to ena_utils : def query_endpoint(url)
+# moved to ena_utils : def fetch_ena_xml(acc)
 
 def taxonomic_lineage(taxon_id):
-    tax_url_base = "https://www.ebi.ac.uk/ena/taxonomy/rest"
-    tax_id_url = f"{tax_url_base}/tax-id/{taxon_id}"
-    taxon_json = json.loads(query_endpoint(tax_id_url).decode())
+    taxon_json = query_taxonomy_by_id(taxon_id)
 
     lineage = []
     for sci_name in taxon_json['lineage'].split('; '):
         if not sci_name:
             continue
-        sci_name_url = f"{tax_url_base}/scientific-name/{sci_name}"
-        print(sci_name_url)
-        this_tax_json = json.loads(query_endpoint(sci_name_url).decode())
+
+        this_tax_json = query_taxonomy_by_name(sci_name)
         print(this_tax_json)
         lineage.append({'name':sci_name, 'rank':this_tax_json[0]['rank']})
 

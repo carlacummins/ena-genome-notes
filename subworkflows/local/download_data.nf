@@ -12,15 +12,15 @@ workflow DOWNLOAD_DATA {
         | set { fasta }
         fasta | view
 
-        BLOBTOOLKIT(meta)
-        | set { btk }
-        btk.png   | view
-        btk.busco | view
+        // BLOBTOOLKIT(meta)
+        // | set { btk }
+        // btk.png   | view
+        // btk.busco | view
 
     emit:
         fasta
-        btk_images = btk.png
-        busco_json = btk.busco
+        // btk_images = btk.png
+        // busco_json = btk.busco
 
 }
 

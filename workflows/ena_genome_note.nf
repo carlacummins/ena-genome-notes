@@ -23,8 +23,9 @@ workflow GENOMENOTE {
         RUN_QCS(genome_ch)
         | set { qc_ch }
         qc_ch.busco_dir | view { "GENOMENOTE::qc_ch.busco_dir = $it" }
+        qc_ch.busco_short_summaries_json | view { "GENOMENOTE::qc_ch.busco_short_summaries_json = $it" }
 
-        GENOMESUMMARY(accession, gca_info.sample_json, gca_info.assembly_json, qc_ch.busco_dir)
+        GENOMESUMMARY(accession, gca_info.sample_json, gca_info.assembly_json, qc_ch.busco_dir, qc_ch.busco_short_summaries_json)
         | set { genomenote_ch }
 }
 

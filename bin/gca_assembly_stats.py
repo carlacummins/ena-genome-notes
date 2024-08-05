@@ -1,41 +1,15 @@
 #!/usr/bin/env python
 
 import sys, argparse
-
-import requests
-import xmltodict
 import json
+from ena_utils import *
 
 parser = argparse.ArgumentParser(description="Fetch and parse assembly stats for a given accession")
 parser.add_argument('--acc', help="assembly accession")
 parser.add_argument('--out', help="output file (json format)")
 opts = parser.parse_args(sys.argv[1:])
 
-def fetch_xml(url):
-    # Send an HTTP GET request to the URL
-    response = requests.get(url)
-
-    # Check if the request was successful (status code 200)
-    if response.status_code == 200:
-        # Parse the XML content
-        root = xmltodict.parse(response.content)
-    else:
-        print("Failed to fetch data. Status code:", response.status_code)
-
-    return root
-
-def ena_advanced_search(data):
-    url = "https://www.ebi.ac.uk/ena/portal/api/search"
-    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-
-    r = requests.post(url, data=data, headers=headers)
-
-    if data.get('format') == 'json':
-        results = json.loads(r.content.decode())
-    else:
-        results = r.text
-
-    return results
+# moved to ena_utils : def ena_advanced_search(data)
 
 def add_chromosome_lengths(chr_list):
     accessions = [x[2] for x in chr_list]
@@ -50,9 +24,9 @@ def add_chromosome_lengths(chr_list):
         chr_list[i].append(sl_dict.get(chr_list[i][2]))
     return chr_list
 
-# URL of the XML data
-ena_xml_url = 'https://www.ebi.ac.uk/ena/browser/api/xml'
-gca_xml = fetch_xml(f"{ena_xml_url}/{opts.acc}")['ASSEMBLY_SET']['ASSEMBLY']
+# fetch assembly XML data
+ena_xml = fetch_ena_xml(opts.acc)
+gca_xml = ena_xml['ASSEMBLY_SET']['ASSEMBLY']
 print(gca_xml)
 
 # parse XML and pull out stats of interest
